@@ -1,8 +1,29 @@
-import json
 import sqlite3
 
 conexao = sqlite3.connect("produtos.db")
 cursor = conexao.cursor()
+
+def confirmacao_1_2():
+    while True:
+                try:
+                    confirmacao = int(input("Escolha uma opcao"))
+                    while confirmacao != 1 and confirmacao != 2:
+                        print("Opcao invalida, selecione 1 ou 2.")
+                        confirmacao = int(input("Escolha uma opcao"))
+
+                    break
+
+                except ValueError:
+                    print("ERRO, escolha uma opcao válida.")
+                    continue
+
+    if confirmacao == 1:
+        return 1
+    
+    elif confirmacao == 2:
+        return 2
+
+# Funcoes de banco de dados
 
 def criar_banco_dados():
     cursor.execute("""CREATE TABLE IF NOT EXISTS produtos(
@@ -16,10 +37,14 @@ def criar_banco_dados():
     conexao.commit()
 
 def inserir_produto_no_banco(produto):
+
     cursor.execute("""INSERT INTO produtos
                    (nome, categoria, quantidade, status, valor) VALUES
                    (?, ?, ?, ?, ?)""",
                    (produto.nome, produto.categoria, produto.quantidade, produto.status, produto.valor))
+    
+    produto.id = cursor.lastrowid
+
     conexao.commit()
 
 def carregar_banco_dados():
@@ -35,7 +60,7 @@ def carregar_banco_dados():
             produtos.append(Produto(produto_id, nome, categoria, quantidade, status, valor))
 
     else:
-        produtos : list[Produto] = []
+        produtos : list[Produto] = []   
 
     return produtos
 
@@ -46,6 +71,49 @@ def atualizar_banco_dados(produto):
                    (produto.status, produto.valor, produto.id))
 
     conexao.commit()
+
+def excluir_produto_do_banco(produto):
+    cursor.execute("DELETE FROM produtos WHERE id = ?",
+                   (produto.id,))
+
+    conexao.commit()
+
+    print('Produto removido com sucesso !')
+
+
+def editar_nome_no_banco(produto, nome_novo):
+    cursor.execute("""UPDATE produtos
+                   SET nome = ?
+                   WHERE id = ?""",
+                  (nome_novo, produto.id))
+
+    conexao.commit()
+
+def editar_categoria_no_banco(produto, categoria_nova):
+    cursor.execute("""UPDATE produtos
+                   SET categoria = ?
+                   WHERE id = ?""",
+                  (categoria_nova, produto.id))
+
+    conexao.commit()
+
+def editar_quantidade_no_banco(produto, quantidade_nova):
+    cursor.execute("""UPDATE produtos
+                   SET quantidade = ?
+                   WHERE id = ?""",
+                  (quantidade_nova, produto.id))
+
+    conexao.commit()
+
+def editar_valor_no_banco(produto, valor_novo):
+    cursor.execute("""UPDATE produtos
+                   SET valor = ?
+                   WHERE id = ?""",
+                  (valor_novo, produto.id))
+
+    conexao.commit()
+
+# Classes e funcoes de manipulacao de produtos
 
 categorias = ['alimentos',
               'bebidas']
@@ -59,29 +127,6 @@ class Produto:
         self.status = status
         self.valor = valor
 
-    def to_dict(self):
-        produto_to_dict = {}
-
-        produto_to_dict['nome'] = self.nome
-        produto_to_dict['categoria'] = self.categoria
-        produto_to_dict['quantidade'] = self.quantidade
-        produto_to_dict['status'] = self.status
-        produto_to_dict['valor'] = self.valor
-
-        return produto_to_dict
-    
-    def from_dict(produto_dict):
-        nome_TO = produto_dict['nome']
-        categoria_TO = produto_dict['categoria']
-        quantidade_TO = produto_dict['quantidade']
-        status_TO = produto_dict['status']
-
-        if 'valor' in produto_dict :
-            valor_TO = produto_dict['valor']
-        else:
-            valor_TO = None
-
-        return Produto(nome_TO, categoria_TO, quantidade_TO, status_TO, valor_TO)
 
     def __str__(self):
         return f'Produto : {self.nome} | Estoque : {self.quantidade}'
@@ -106,24 +151,10 @@ class Produto:
         print("Pronto, agora seu produto está a venda :\n\n")
         self.detalhar_produto()
 
-def carregar_dados_json():
-    try:
-        with open('produtos.json', 'r', encoding='utf-8') as arquivo_produtos:
-            produtos_dict_json = json.load(arquivo_produtos)
-            produtos: list[Produto] = []
-            
-            for produto_dict in produtos_dict_json:
-                produto_objeto = Produto.from_dict(produto_dict) 
-
-                produtos.append(produto_objeto)
-
-    except (FileNotFoundError, json.JSONDecodeError):
-        produtos: list[Produto] = []
-
-    return produtos
+# Funcoes de interacao com o usuario
 
 def menu():
-    opcoes = (1, 2, 3, 4)
+    opcoes = (1, 2, 3, 4, 5, 6)
 
     print("=====    MENU    =====\n\n")
     print(
@@ -131,7 +162,9 @@ def menu():
         "1 - Cadastrar produto\n"
         "2 - Ver produtos\n"
         "3 - Vender produto\n"
-        "4 - Sair\n"
+        "4 - Excluir produto\n"
+        "5 - Editar produto\n"
+        "6 - Sair\n"
     )
 
     while True:
@@ -232,15 +265,21 @@ def cadastrar_produto():
 
             produto_status = "NFS"
 
-            produto = Produto(produto_nome,
+            produto = Produto(None,
+                produto_nome,
                 produto_categoria,
                 produto_estoque,
                 produto_status,
                 None)
 
-            produtos.append(produto)
-            
             inserir_produto_no_banco(produto)
+
+            produtos.append(produto)
+
+            print('Produto cadastrado com sucesso !\n'
+                  'Volte ao menu e escolha a opcao "Ver produtos" para ver os detalhes do produto cadastrado.\n')
+
+            input("Pressione ENTER para voltar ao menu...")
 
 def encontrar_produto():
     while True:
@@ -273,7 +312,7 @@ def encontrar_produto():
                 print(
                     f"=======   ERRO   =======\n"
                     f"Seu ID de produto : ({produto}), nao foi encontrado cadastrado no sistema.\n\n"
-                    f"1 - Cadastre-o voltando para o Menu\n"
+                    f"1 - Cadastre-o, ou confira o nome/id voltando para o Menu\n"
                     f"2 - Corrija o nome do produto."
                     )
 
@@ -369,7 +408,7 @@ def confirmacao_produto(produto_em_uso):
         )
 
         print(
-            "Voce CONFIRMA que é este o produto que voce quer vender?\n"
+            "Voce CONFIRMA que é este o produto correto?\n"
             "1 - SIM\n"
             "2 - NAO"
         )
@@ -393,7 +432,7 @@ def confirmacao_produto(produto_em_uso):
         if confirmacao == 2:
             return "produto_errado"
 
-def definir_valor(produto_em_uso):
+def definir_valor():
     print(
         "Entao agora vamos definir o valor.\n"
         "Qual sera o VALOR em REAIS do seu produto?"
@@ -437,17 +476,6 @@ def definir_valor(produto_em_uso):
         else:
             continue
 
-def salvar_dados_em_json():
-    produtos_em_json = []
-
-    for produto in produtos:
-        produto_dict = produto.to_dict()
-
-        produtos_em_json.append(produto_dict)
-
-    with open('produtos.json', 'w', encoding='utf-8') as arquivo_produtos:
-        json.dump(produtos_em_json, arquivo_produtos, indent=4, ensure_ascii=False)
-
 def ver_detalhes_produto():
                 while True:
                     try:
@@ -467,15 +495,213 @@ def ver_detalhes_produto():
                     print('\nPara ver detalhes :\n')
 
                     produto_ver_detalhes = encontrar_produto()
+
+                    if produto_ver_detalhes == None:
+                        return
+
                     produto_ver_detalhes.detalhar_produto()
 
                 if opcao_ver_detalhes_pdt == 2:
                     return
 
+def editar_produto(produto):
+    opcoes = (1, 2, 3, 4, 5)
+
+    while True:
+        print(f"""O que voce deseja alterar no produto : [{produto.nome}]?\n\n
+            1 - Nome\n
+            2 - Categoria\n
+            3 - Quantidade\n
+            4 - Valor\n
+            5 - Nao alterar, e voltar ao menu""")
+
+        while True:
+            try:
+                opcao_edit_product = int(input('Digite a opcao desejada : '))
+                while opcao_edit_product not in opcoes:
+                    print('Opcao inválida, tente novamente.')
+                    opcao_edit_product = int(input('Digite a opcao desejada : '))
+
+                break
+
+            except ValueError:
+                print('Opcao inválida, tente novamente.')
+                continue
+
+
+        if opcao_edit_product == 1:
+            editar_nome(produto)            
+
+            print('Nome alterado com sucesso!')
+            break
+
+        elif opcao_edit_product == 2:
+            editar_categoria(produto)
+
+            print('Categoria alterada com sucesso!')
+            break
+
+        elif opcao_edit_product == 3:
+            editar_quantidade(produto)
+
+            print('Quantidade alterada com sucesso!')
+            break
+
+        elif opcao_edit_product == 4:
+            editar_valor(produto)
+            
+            print('Valor alterado com sucesso!')
+            break
+
+        elif opcao_edit_product == 5:
+            break
+
+def editar_nome(produto):
+    while True:
+                print('Para mudar o nome, digite o novo nome do seu produto :\n\n')
+
+                nome_novo = input(': ').lower().strip()
+
+                print(
+                f"Voce CONFIRMA que digitou o novo nome : {nome_novo} corretamente?\n"
+                f"1 - SIM\n"
+                f"2 - NAO"
+                )
+
+                conf = confirmacao_1_2()
+
+                if conf == 1:
+                    try:
+                        editar_nome_no_banco(produto, nome_novo)
+                        
+                        produto.nome = nome_novo
+
+                        break
+
+                    except sqlite3.IntegrityError:
+                        print('Nome de produto já existente, escolha :\n'
+                              '1 - Definir outro nome\n'
+                              '2 - Voltar ao menu\n')
+
+                        conf2 = confirmacao_1_2()
+
+                        if conf2 == 1:
+                            continue
+
+                        elif conf2 == 2:
+                            break
+
+                elif conf == 2:
+                    continue
+
+def editar_categoria(produto):
+    while True:
+                print(f'Para mudar a categoria, digite a nova categoria do seu produto dentre as opcoes válidas :\n'
+                      f'{categorias}\n\n')
+
+                categoria_nova = input('Digite a categoria desejada: ').lower().strip()
+
+                if categoria_nova in categorias:
+                    print(
+                    f"Voce CONFIRMA que digitou a categoria nova : {categoria_nova} corretamente?\n"
+                    f"1 - SIM\n"
+                    f"2 - NAO"
+                    )
+
+                    conf = confirmacao_1_2()
+
+                    if conf == 1:
+                        produto.categoria = categoria_nova
+
+                        editar_categoria_no_banco(produto, categoria_nova)
+
+                        break
+
+                    elif conf == 2:
+                        continue
+
+                else:
+                    print('Categoria inválida, tente novamente.')
+                    continue
+
+def editar_quantidade(produto):
+    while True:
+                print(f'Para mudar a quantidade, digite a nova quantidade do seu produto:\n\n')
+
+                while True:
+                    try:
+                        quantidade_nova = int(input('Digite a quantidade desejada: '))
+
+                        if quantidade_nova < 1:
+                            print('Quantidade inválida, tente novamente.')
+                            continue
+
+                        else:
+                            break
+
+                    except ValueError:
+                        print('Quantidade inválida, tente novamente.')
+                        continue
+
+                print(
+                f"Voce CONFIRMA que digitou a quantidade nova : {quantidade_nova} corretamente?\n"
+                f"1 - SIM\n"
+                f"2 - NAO"
+                )
+
+                conf = confirmacao_1_2()
+
+                if conf == 1:
+                    produto.quantidade = quantidade_nova
+
+                    editar_quantidade_no_banco(produto, quantidade_nova)
+
+                    break
+
+                elif conf == 2:
+                    continue
+
+def editar_valor(produto):
+    while True:
+                print(f'Para mudar o valor, digite o novo valor do seu produto:\n\n')
+
+                while True:
+                    try:
+                        valor_novo = float(input('Digite o valor desejado: R$'))
+                        
+                        if valor_novo < 1:
+                            print('Valor inválido, tente novamente.')
+                            continue
+                        
+                        else:
+                            break
+                        
+                    except ValueError:
+                        print('Quantidade inválida, tente novamente.')
+                        continue
+
+                print(
+                f"Voce CONFIRMA que digitou o valor novo : {valor_novo} corretamente?\n"
+                f"1 - SIM\n"
+                f"2 - NAO"
+                )
+
+                conf = confirmacao_1_2()
+
+                if conf == 1:
+                    produto.valor = valor_novo
+
+                    editar_valor_no_banco(produto, valor_novo)
+
+                    break
+
+                elif conf == 2:
+                    continue
+
 # inicio do code
 
-produtos = carregar_dados_json()
 criar_banco_dados()
+produtos = carregar_banco_dados()
 
 while True:
 
@@ -488,7 +714,7 @@ while True:
         if produtos:
             print("Atualmente temos os seguintes produtos :\n")
             for posicao, mostrar_produto in enumerate(produtos):
-                print(f"{posicao+1}º Produto : {mostrar_produto.nome}")
+                print(f"{posicao+1}º Produto : {mostrar_produto.nome} [ID : {mostrar_produto.id}]")
 
             print(f"\nTotal de produtos : {len(produtos)}\n")
 
@@ -527,7 +753,7 @@ while True:
                     continue
 
                 elif resultado_confirmacao_produto == "produto_correto":
-                    valor = definir_valor(produto_em_uso)
+                    valor = definir_valor()
 
                     produto_em_uso.colocar_a_venda(valor)
 
@@ -538,6 +764,36 @@ while True:
                     break
 
     if opcao == 4:
+        while True:
+            print('Informe qual produto voce deseja excluir: ')
+        
+            produto = encontrar_produto()
+
+            if produto == None:
+                break
+
+            R_conf_Pdt_op4 = confirmacao_produto(produto)
+
+            if R_conf_Pdt_op4 == "produto_errado":
+                continue
+
+            elif R_conf_Pdt_op4 == "produto_correto":
+                excluir_produto_do_banco(produto)
+                produtos.remove(produto)
+                break
+
+        input("Pressione ENTER para voltar ao menu...")
+
+    if opcao == 5:
+        print('Para editar seu produto, vamos primeiro definir o produto que voce quer editar.\n\n')
+
+        produto_op5 = encontrar_produto()
+
+        if produto_op5 == None:
+            continue
+
+        editar_produto(produto_op5)
+
+    if opcao == 6:
         break
 
-salvar_dados_em_json()
