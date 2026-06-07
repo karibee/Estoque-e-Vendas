@@ -80,7 +80,6 @@ def excluir_produto_do_banco(produto):
 
     print('Produto removido com sucesso !')
 
-
 def editar_nome_no_banco(produto, nome_novo):
     cursor.execute("""UPDATE produtos
                    SET nome = ?
@@ -505,7 +504,7 @@ def ver_detalhes_produto():
                     return
 
 def editar_produto(produto):
-    opcoes = (1, 2, 3, 4, 5)
+    opcoes = (1, 2, 3, 4, 5, 6)
 
     while True:
         print(f"""O que voce deseja alterar no produto : [{produto.nome}]?\n\n
@@ -513,7 +512,8 @@ def editar_produto(produto):
             2 - Categoria\n
             3 - Quantidade\n
             4 - Valor\n
-            5 - Nao alterar, e voltar ao menu""")
+            5 - Retirar produto da venda\n
+            6 - Nao alterar, e voltar ao menu""")
 
         while True:
             try:
@@ -554,6 +554,9 @@ def editar_produto(produto):
             break
 
         elif opcao_edit_product == 5:
+            editar_status(produto)
+
+        elif opcao_edit_product == 6:
             break
 
 def editar_nome(produto):
@@ -697,6 +700,20 @@ def editar_valor(produto):
 
                 elif conf == 2:
                     continue
+
+def editar_status(produto):
+        if produto.status == "NFS":
+            print("Produto já não está à venda.")
+            return
+
+        print(f'Seu prodouto : {produto.nome}, agora nao está mais a venda.\n')
+
+        produto.status = "NFS"
+        produto.valor = None
+
+        atualizar_banco_dados(produto)
+
+
 
 # inicio do code
 
